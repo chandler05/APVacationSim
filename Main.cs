@@ -19,6 +19,7 @@ using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
 using Archipelago.MultiClient.Net.Helpers;
 using Newtonsoft.Json;
+using Archipelago.MultiClient.Net.Packets;
 
 namespace APVacationSim
 {
@@ -49,6 +50,7 @@ namespace APVacationSim
         static GameObject diveAreaScanner;
         static GameObject hikingTrailScanner;
         static GameObject overlookScanner;
+        static GameObject finalScanner;
 
         static int completedBeachMemoriesCount = 0;
         static int completedForestMemoriesCount = 0;
@@ -64,10 +66,7 @@ namespace APVacationSim
 
         static LocationManager locationManager;
 
-        // Make sure check is sent BEFORE the trophy is grabbed
-        // Override final gate and make sure count is based on total memory count
-        // Fix returning to menu crashing game (disable AP when not in a game)
-        // Send Goal on switch flip
+        static bool goalSent = false;
 
         public Main(IntPtr ptr) : base(ptr)
         {
@@ -96,10 +95,6 @@ namespace APVacationSim
                 Connect(o2.GetValue("port").ToString(), o2.GetValue("slot_name").ToString(), o2.GetValue("password").ToString());
             }
         }
-
-        private static string _hostName = string.Empty;
-        private static string _username = string.Empty;
-        private static string _password = string.Empty;
 
         [HarmonyPostfix]
         public static void Start()
@@ -191,6 +186,31 @@ namespace APVacationSim
                     overlookScanner.GetComponent<WristbandScannerController>().failVOClips = null;
                     overlookScanner.GetComponent<WristbandScannerController>().failClipVOIntro = null;
                 }
+            }
+
+            if (finalScanner == null)
+            {
+                GameObject search = GameObject.Find("WristbandScanner_Finale/WristbandScannerContainer/WristbandScanner_Finale");
+                if (search != null)
+                {
+                    finalScanner = search;
+                }
+            }
+            else
+            {
+                if (finalScanner.GetComponent<WristbandScannerController>().scannerUnlock.requiredLocalMemories != finalMemories)
+                {
+                    finalScanner.GetComponent<WristbandScannerController>().scannerUnlock.requiredLocalMemories = finalMemories;
+                    finalScanner.GetComponent<WristbandScannerController>().memoryCountLabel.text = finalMemories.ToString();
+                    finalScanner.GetComponent<WristbandScannerController>().failVOClips = null;
+                    finalScanner.GetComponent<WristbandScannerController>().failClipVOIntro = null;
+                }
+            }
+
+            if (!goalSent && GameObject.Find("Coconut_PartyManager") != null && GameObject.Find("Coconut_PartyManager").GetComponent<PartyManager>().isPartyActive)
+            {
+                SendGoal();
+                goalSent = true;
             }
 
             if (watchText == null)
@@ -344,6 +364,14 @@ namespace APVacationSim
                 overlookMemories = settings["mountainGate"];
                 finalMemories = settings["finalGate"];
             }
+        }
+
+        public static void SendGoal()
+        {
+            Debug.Log("Sending Goal!");
+            var statusUpdatePacket = new StatusUpdatePacket();
+            statusUpdatePacket.Status = ArchipelagoClientState.ClientGoal;
+            APSession.Socket.SendPacket(statusUpdatePacket);
         }
 
         [HarmonyPrefix]
