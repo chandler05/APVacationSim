@@ -33,7 +33,7 @@ namespace APVacationSim
         static GameObject forestTP = null;
         static GameObject mountainTP = null;
 
-        static bool beachUnlocked = true;
+        static bool beachUnlocked = false;
         static bool forestUnlocked = false;
         static bool mountainUnlocked = false;
 
