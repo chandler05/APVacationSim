@@ -99,7 +99,7 @@ namespace APVacationSim
         [HarmonyPostfix]
         public static void Start()
         {
-            BepInExLoader.log.LogMessage("[Archipelago] I'm Starting Up...");  
+            BepInExLoader.log.LogMessage("[Archipelago] I'm Starting Up...");
         }
 
         [HarmonyPostfix]
@@ -198,9 +198,9 @@ namespace APVacationSim
             }
             else
             {
-                if (finalScanner.GetComponent<WristbandScannerController>().scannerUnlock.requiredLocalMemories != finalMemories)
+                if (finalScanner.GetComponent<WristbandScannerController>().scannerUnlock.requiredGlobalMemories != finalMemories)
                 {
-                    finalScanner.GetComponent<WristbandScannerController>().scannerUnlock.requiredLocalMemories = finalMemories;
+                    finalScanner.GetComponent<WristbandScannerController>().scannerUnlock.requiredGlobalMemories = finalMemories;
                     finalScanner.GetComponent<WristbandScannerController>().memoryCountLabel.text = finalMemories.ToString();
                     finalScanner.GetComponent<WristbandScannerController>().failVOClips = null;
                     finalScanner.GetComponent<WristbandScannerController>().failClipVOIntro = null;
@@ -299,12 +299,12 @@ namespace APVacationSim
         {
             beachUnlocked = true;
         }
-           
+
         public static void UnlockForest()
         {
             forestUnlocked = true;
         }
-           
+
         public static void UnlockMountain()
         {
             mountainUnlocked = true;
@@ -355,7 +355,7 @@ namespace APVacationSim
 
         private static void PullFromSlotData(LoginSuccessful login)
         {
-            locations = ((JObject) login.SlotData["locations"]).ToObject<Dictionary<string, VSIMLocation>>();
+            locations = ((JObject)login.SlotData["locations"]).ToObject<Dictionary<string, VSIMLocation>>();
             var settings = ((JObject)login.SlotData["settings"]).ToObject<Dictionary<string, int>>();
             if (settings != null)
             {
@@ -497,6 +497,27 @@ namespace APVacationSim
                 return false;
             }
             return true;
+        }
+
+        [HarmonyPrefix]
+        public static bool GlobalMemoryCount(VacationWatchController __instance, ref int __result)
+        {
+            __result = completedBeachMemoriesCount + completedForestMemoriesCount + completedMountainMemoriesCount;
+            return false;
+        }
+
+        [HarmonyPrefix]
+        public static bool MemoryChecker(VacationWatchManager __instance, ref bool __result, ref int __0)
+        {
+            int totalComplete = completedBeachMemoriesCount + completedForestMemoriesCount + completedMountainMemoriesCount;
+            if (totalComplete >= __0)
+            {
+                __result = true;
+            } else
+            {
+                __result = false;
+            }
+            return false;
         }
 
         [HarmonyPrefix]

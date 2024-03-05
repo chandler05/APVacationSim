@@ -110,6 +110,20 @@ namespace APVacationSim
                 harmony.Patch(watchCounter, prefix: new HarmonyMethod(watchCounterNew));
                 log.LogMessage("[Archipelago] Harmony - Runtime Patch's Applied");
 
+                var globalWatchCounter = AccessTools.Method(typeof(VacationWatchController), "GetGlobalMemoriesComplete");
+                log.LogMessage("[Archipelago] Harmony - Original Method: " + globalWatchCounter.DeclaringType.Name + "." + globalWatchCounter.Name);
+                var globalWatchCounterNew = AccessTools.Method(typeof(Main), "GlobalMemoryCount");
+                log.LogMessage("[Archipelago] Harmony - Prefix Method: " + globalWatchCounterNew.DeclaringType.Name + "." + globalWatchCounterNew.Name);
+                harmony.Patch(globalWatchCounter, prefix: new HarmonyMethod(globalWatchCounterNew));
+                log.LogMessage("[Archipelago] Harmony - Runtime Patch's Applied");
+
+                var checkMemories = AccessTools.Method(typeof(VacationWatchManager), "HasGlobalMemories");
+                log.LogMessage("[Archipelago] Harmony - Original Method: " + checkMemories.DeclaringType.Name + "." + checkMemories.Name);
+                var checkMemoriesNew = AccessTools.Method(typeof(Main), "MemoryChecker");
+                log.LogMessage("[Archipelago] Harmony - Prefix Method: " + checkMemoriesNew.DeclaringType.Name + "." + checkMemoriesNew.Name);
+                harmony.Patch(checkMemories, prefix: new HarmonyMethod(checkMemoriesNew));
+                log.LogMessage("[Archipelago] Harmony - Runtime Patch's Applied");
+
                 var boardCounter = AccessTools.Method(typeof(ProductivityBoard.GoalPercentageDisplay), "Refresh");
                 log.LogMessage("[Archipelago] Harmony - Original Method: " + boardCounter.DeclaringType.Name + "." + boardCounter.Name);
                 var boardCounterNew = AccessTools.Method(typeof(Main), "BoardText");
