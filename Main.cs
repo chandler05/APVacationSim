@@ -486,6 +486,16 @@ namespace APVacationSim
                 __result = completedBeachMemoriesCount;
                 return false;
             }
+            if (__0 == "Forest")
+            {
+                __result = completedForestMemoriesCount;
+                return false;
+            }
+            if (__0 == "Mountain")
+            {
+                __result = completedMountainMemoriesCount;
+                return false;
+            }
             return true;
         }
 
