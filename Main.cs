@@ -23,11 +23,15 @@ using Newtonsoft.Json;
 using Archipelago.MultiClient.Net.Packets;
 using Archipelago.MultiClient.Net.Models;
 using Oculus.Platform;
+using Viveport.Arcade;
 
 namespace APVacationSim
 {
     public class Main : MonoBehaviour
     {
+        public static readonly object _lock = new object();
+        public static readonly Queue<Action> _mainThreadActions = new Queue<Action>();
+
         static GameObject beachGate = null;
         static GameObject forestGate = null;
         static GameObject mountainGate = null;
@@ -66,6 +70,7 @@ namespace APVacationSim
         static GameObject globalGoalManager;
 
         static Dictionary<string, VSIMLocation> locations = new Dictionary<string, VSIMLocation>();
+        static bool locationSetupComplete = false;
 
         static LocationManager locationManager;
 
@@ -252,18 +257,30 @@ namespace APVacationSim
                 }
             }
 
-            if (globalGoalManager == null || locations == null)
+            if (locationSetupComplete && globalGoalManager == null)
             {
                 GameObject search = GameObject.Find("Coconut_GoalManager");
-                if (search != null && locations != null)
+                if (search != null)
                 {
+                    BepInExLoader.log.LogMessage("Initializing trophies");
                     globalGoalManager = search;
                     locationManager = new LocationManager(APSession);
                     locationManager.RegisterLocations(locations, globalGoalManager.GetComponent<GoalManager>());
                 }
-            } else
+            } else if (locationSetupComplete)
             {
                 locationManager.CheckLocations();
+            }
+
+            lock (_lock)
+            {
+                if (_mainThreadActions.Count > 0)
+                {
+                    _mainThreadActions.Dequeue().Invoke();
+                } else
+                {
+                    locationSetupComplete = true;
+                }
             }
         }
 
@@ -317,7 +334,7 @@ namespace APVacationSim
             mountainUnlocked = true;
         }
 
-        private static async void Connect(string server, string user, string pass)
+        private static void Connect(string server, string user, string pass)
         {
             if (pass == "")
             {
@@ -357,29 +374,52 @@ namespace APVacationSim
 
             Debug.Log(loginSuccess.ToString());
 
-            await PullFromSlotData(loginSuccess);
+            PullFromSlotData(loginSuccess);
         }
 
-        private static async void PullFromSlotData(LoginSuccessful login)
+        private static void PullFromSlotData(LoginSuccessful login)
         {
-            //await ScoutAllLocations();
-            //await session.Locations.ScoutLocationsAsync(location.ap_id)).Locations[0].Item) +" for " + session.Players.GetPlayerName((await session.Locations.ScoutLocationsAsync(location.ap_id)).Locations[0].Player)
-            locations = ((JObject)login.SlotData["locations"]).ToObject<Dictionary<string, VSIMLocation>>();
             var settings = ((JObject)login.SlotData["settings"]).ToObject<Dictionary<string, dynamic>>();
             if (settings != null)
             {
-                diveAreaMemories = settings["beachGate"];
-                hikingTrailMemories = settings["forestGate"];
-                overlookMemories = settings["mountainGate"];
-                finalMemories = settings["finalGate"];
-                objectLocations = settings["objectLocations"];
-                inAreaDoorLocks = settings["inAreaDoorLocks"];
+                diveAreaMemories = (int)settings["beachGate"];
+                hikingTrailMemories = (int)settings["forestGate"];
+                overlookMemories = (int)settings["mountainGate"];
+                finalMemories = (int)settings["finalGate"];
+                objectLocations = settings["objectLocations"].ToObject<Dictionary<string, string>>();
+                inAreaDoorLocks = (bool)settings["inAreaDoorLocks"];
+            }
+            ScoutAllLocations();
+        }
+
+        private static void ScoutAllLocations()
+        {
+            var rawLocations = LoadLocationsFromFile();
+            BepInExLoader.log.LogMessage(rawLocations.Count);
+            foreach (RawVSIMLocation loc in rawLocations.Values)
+            {
+                _mainThreadActions.Enqueue(async () =>
+                {
+                    long ap_id = APSession.Locations.GetLocationIdFromName("Vacation Simulator", loc.name);
+                    LocationInfoPacket info = await APSession.Locations.ScoutLocationsAsync(ap_id);
+                    string item_name = APSession.Items.GetItemName(info.Locations[0].Item);
+                    string player_name = APSession.Players.GetPlayerName(info.Locations[0].Player);
+                    //BepInExLoader.log.LogMessage(loc.name + " has " + item_name);
+                    locations.Add(loc.name, new VSIMLocation(loc.name, ap_id, item_name, player_name, loc.in_game_id));
+                });
             }
         }
 
-        private async Task ScoutAllLocations()
+        private static Dictionary<string, RawVSIMLocation> LoadLocationsFromFile()
         {
-            //foreach (ItemLocation)
+            string locationsPath = Path.Combine(Environment.CurrentDirectory + "/BepInEx/plugins/APVacationSim/", "locations.json");
+
+            if (!File.Exists(locationsPath))
+                throw new FileNotFoundException("Failed to load location data", locationsPath);
+
+            string json = File.ReadAllText(locationsPath);
+            return JsonConvert.DeserializeObject<RawVSIMLocation[]>(json)
+                .ToDictionary(x => x.name, x => x);
         }
 
         public static void SendGoal()
