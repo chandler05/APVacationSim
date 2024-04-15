@@ -14,7 +14,7 @@ namespace APVacationSim
             MODNAME = "APVacationSim",
             AUTHOR = "chandler",
             GUID = "com." + AUTHOR + "." + MODNAME,
-            VERSION = "0.0.1";
+            VERSION = "0.2.0";
 
         public static BepInEx.Logging.ManualLogSource log;
 

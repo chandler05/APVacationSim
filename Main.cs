@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using BepInEx;
 using UnhollowerBaseLib;
 using UnhollowerRuntimeLib;
@@ -20,6 +21,8 @@ using System.Threading.Tasks;
 using Archipelago.MultiClient.Net.Helpers;
 using Newtonsoft.Json;
 using Archipelago.MultiClient.Net.Packets;
+using Archipelago.MultiClient.Net.Models;
+using Oculus.Platform;
 
 namespace APVacationSim
 {
@@ -62,11 +65,15 @@ namespace APVacationSim
 
         static GameObject globalGoalManager;
 
-        static Dictionary<string, VSIMLocation> locations;
+        static Dictionary<string, VSIMLocation> locations = new Dictionary<string, VSIMLocation>();
 
         static LocationManager locationManager;
 
         static bool goalSent = false;
+
+        static Dictionary<string, string> objectLocations = new Dictionary<string, string>();
+
+        static bool inAreaDoorLocks = false;
 
         public Main(IntPtr ptr) : base(ptr)
         {
@@ -310,7 +317,7 @@ namespace APVacationSim
             mountainUnlocked = true;
         }
 
-        private static void Connect(string server, string user, string pass)
+        private static async void Connect(string server, string user, string pass)
         {
             if (pass == "")
             {
@@ -350,20 +357,29 @@ namespace APVacationSim
 
             Debug.Log(loginSuccess.ToString());
 
-            PullFromSlotData(loginSuccess);
+            await PullFromSlotData(loginSuccess);
         }
 
-        private static void PullFromSlotData(LoginSuccessful login)
+        private static async void PullFromSlotData(LoginSuccessful login)
         {
+            //await ScoutAllLocations();
+            //await session.Locations.ScoutLocationsAsync(location.ap_id)).Locations[0].Item) +" for " + session.Players.GetPlayerName((await session.Locations.ScoutLocationsAsync(location.ap_id)).Locations[0].Player)
             locations = ((JObject)login.SlotData["locations"]).ToObject<Dictionary<string, VSIMLocation>>();
-            var settings = ((JObject)login.SlotData["settings"]).ToObject<Dictionary<string, int>>();
+            var settings = ((JObject)login.SlotData["settings"]).ToObject<Dictionary<string, dynamic>>();
             if (settings != null)
             {
                 diveAreaMemories = settings["beachGate"];
                 hikingTrailMemories = settings["forestGate"];
                 overlookMemories = settings["mountainGate"];
                 finalMemories = settings["finalGate"];
+                objectLocations = settings["objectLocations"];
+                inAreaDoorLocks = settings["inAreaDoorLocks"];
             }
+        }
+
+        private async Task ScoutAllLocations()
+        {
+            //foreach (ItemLocation)
         }
 
         public static void SendGoal()
